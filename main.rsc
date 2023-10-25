@@ -1,27 +1,38 @@
 {
-:local mytime [/system clock get time];
+:local Time [/system clock get time];
 :local eths [:toarray ""];
-:local I 1;
-:foreach n,a in=[/log print as-value where topics=interface,warning  ] do={ 
-:local time [:totime ([:pick ($a->"time") ([:find ($a->"time") ":" -1]-2) ([:find ($a->"time") ":" -1 ]+5)]."0")];
+:foreach n,a in=[/log print as-value where topics=interface,warning ] do={ 
+:local F [:find ($a->"time") ":" -1 ];
+:local time [:totime ([:pick ($a->"time") ($F-2) ($F+5)]."0")];
 :local eth  [:pick ($a->"message") 0 [:find ($a->"message") (":")]];
-:if ($time>($mytime-00:00:30) && $time<($mytime+00:05:00)) do={:set ($eths->$eth) ($a->"message");};
-:if ($I=0) do={:log warning "L00P detected";};
-:set $I 1;
+:if ($time>($Time-00:02:00) && $time<($Time+00:02:00) && [:len $eth]>0) do={:if (($a->"message")~"loop") do={:set ($eths->$eth) (($eths->$eth)+5);};:set ($eths->$eth) (($eths->$eth)+1);};
 };
 :foreach e,msg in=$eths do={
-:log warning "the is L00P  in ether=$e ";
-:beep  length=5;
-:foreach f in=[/interface ethernet find where name="$e"] do={
-    :local m [/interface ethernet get $f mac-address];
-    :foreach p in=[/interface bridge port find where interface="$e"] do={
-        :local N [/interface bridge port get $p bridge];
-        :local AM [/interface bridge get [find where name="$N" ] admin-mac];
-            :local nm ([:pick $m 0 9 ].[/system clock get time]);
-            :while ([:len [/interface find where mac-address=$nm]]>0) do={:set $nm ([:pick $m 0 9 ].[/system clock get time]);:delay 2s;:log warning "CHANG admin mac loop";};
-            :do {[/interface bridge set [find name=$N]  auto-mac=no  admin-mac=$nm];:log warning "CHANG bridge=$N admin-mac=$nm";} on-error={:log error ("can not change admin mac".$nm." of bridge=".$N." ether=".$e);}
+:log warning ("L000000P )(*0*)( L000000P )(*0*)(  interface = $e , $msg");
+:if ($msg>=5) do={
+    :beep frequency=1500 length=600ms;:delay 650ms;:beep  length=1800ms;:delay 1850ms;:beep frequency=400 length=200ms;
+    :local ID ([/interface find where name="$e"]->0);
+    :if ([:len $ID]>0) do={
+        :local INT [/interface get $ID];
+        :local MAC ([:pick ($INT->"mac-address") 0 9 ].[/system clock get time]);
+        :while ([:len [/interface find where mac-address=$MAC]]>0) do={:set $MAC ([:pick ($INT->"mac-address") 0 9 ].[/system clock get time]);:delay 1s;:log warning ("CHANG mac again");};
+        :if (($INT->"type")="bridge") do={
+            :do {[/interface bridge set [find name=($INT->"name")] auto-mac=no admin-mac=$MAC];:log warning ("CHANG bridge mac from=".($INT->"mac-address")." to=",$MAC);} on-error={:log error ("can not change bridge mac to=",$MAC);};
+            :delay 2s;
+        };
+        :if (($INT->"type")="ether") do={
+            :do {[/interface ethernet set [find name=($INT->"name")] mac-address=$MAC];:log warning ("CHANG ether mac from=".($INT->"mac-address")." to=",$MAC);} on-error={:log error ("can not change ether mac to=",$MAC);};
+            :delay 2s;
+        };
+        :local IDB [/interface bridge port find where interface=($INT->"name")];
+        :if ([:len $IDB ]>0) do={
+            :delay 5s;
+            :local MAC ([:pick ($INT->"mac-address") 0 9 ].[/system clock get time]);
+            :while ([:len [/interface find where mac-address=$MAC]]>0) do={:set $MAC ([:pick ($INT->"mac-address") 0 9 ].[/system clock get time]);:delay 1s;:log warning ("CHANG mac again");};
+            :do {[/interface bridge set [find name=[/interface bridge port get ($IDB->0) bridge]] auto-mac=no  admin-mac=$MAC];:log warning ("CHANG bridge of interface mac to=",$MAC);} on-error={:log error ("can not change bridge mac to=",$MAC);};
+        };
     };
+    :delay 2s;
 };
-:delay 15s;
 };
 };
