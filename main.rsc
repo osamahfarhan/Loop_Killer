@@ -5,7 +5,7 @@
 :foreach n,a in=[/log print as-value where topics=interface,warning  ] do={ 
 :local time [:totime ([:pick ($a->"time") ([:find ($a->"time") ":" -1]-2) ([:find ($a->"time") ":" -1 ]+5)]."0")];
 :local eth  [:pick ($a->"message") 0 [:find ($a->"message") (":")]];
-:if ($time>($mytime-00:00:30) && $time<($mytime+00:05:00)) do={:set ($eths->$eth) ($a->"message");}
+:if ($time>($mytime-00:00:30) && $time<($mytime+00:05:00)) do={:set ($eths->$eth) ($a->"message");};
 :if ($I=0) do={:log warning "L00P detected";};
 :set $I 1;
 };
@@ -20,8 +20,8 @@
             :local nm ([:pick $m 0 9 ].[/system clock get time]);
             :while ([:len [/interface find where mac-address=$nm]]>0) do={:set $nm ([:pick $m 0 9 ].[/system clock get time]);:delay 2s;:log warning "CHANG admin mac loop";};
             :do {[/interface bridge set [find name=$N]  auto-mac=no  admin-mac=$nm];:log warning "CHANG bridge=$N admin-mac=$nm";} on-error={:log error ("can not change admin mac".$nm." of bridge=".$N." ether=".$e);}
-    }
-}
+    };
+};
 :delay 15s;
-}
-}
+};
+};
